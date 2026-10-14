@@ -647,9 +647,10 @@ async function fbStart(interactive){
  firebase.database().ref('.info/connected').on('value',s=>{fbOnline=!!s.val();if(fbReady)setSt(fbOnline?'online':'offline')});
  if(saved&&saved.tag===tag)last=saved;
  else{const snap=await root.child('users').once('value');
-  if(snap.exists()){if(!interactive)throw new Error('This device must be connected once from Settings or the login page.');
-   if(!confirm('This shop already has data in the cloud. Replace the data on this device with it?\n\nIf this device has records you need, download a backup first.'))throw new Error('Cancelled');
-   cloudReplace((await root.once('value')).val()||{});last=rebuildLast()}
+  if(snap.exists()){const keep={sales:(db.sales||[]).slice(),expenses:(db.expenses||[]).slice()};
+   cloudReplace((await root.once('value')).val()||{});last=rebuildLast();let n=0;
+   ['sales','expenses'].forEach(c=>keep[c].forEach(r=>{if(r&&r.id&&!db[c].some(x=>x.id===r.id)){db[c].push(r);n++}}));
+   if(n)setTimeout(()=>toast('Linked to the cloud. '+n+' sale/expense record(s) from this device were added.'),1500)}
   else{last=emptyLast();last.tag=tag}}
  fbRoot=root;await replayJournal(root);fbReady=true;saveLast();pushDiff();
  COLS.forEach(c=>{const r=root.child(c);r.on('child_added',s=>applyRemote(c,s.key,s.val()),fbErr);r.on('child_changed',s=>applyRemote(c,s.key,s.val()),fbErr);r.on('child_removed',s=>applyRemote(c,s.key,null),fbErr)});
